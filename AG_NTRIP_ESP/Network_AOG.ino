@@ -11,27 +11,11 @@ void WiFi_Start_STA() {
    }
   
   WiFi.begin(NtripSettings.ssid, NtripSettings.password);
-  timeout = millis() + (NtripSettings.timeoutRouter * 1000);
+  timeout = millis() + 30000L;
   while (WiFi.status() != WL_CONNECTED && millis() < timeout) {
     delay(50);
     DBG(".");
-    //WIFI LED blink in double time while connecting
-    if (!LED_WIFI_ON) {
-        if (millis() > (LED_WIFI_time + (LED_WIFI_pause >> 2))) 
-          {
-           LED_WIFI_time = millis();
-           LED_WIFI_ON = true;
-           digitalWrite(LED_PIN_WIFI, HIGH);
-          }
-    }
-    if (LED_WIFI_ON) {
-      if (millis() > (LED_WIFI_time + (LED_WIFI_pulse >> 2))) {
-        LED_WIFI_time = millis();
-        LED_WIFI_ON = false;
-        digitalWrite(LED_PIN_WIFI, LOW);
-      }
-    }
-  }    
+  }
   
   DBG("", 1); //NL
   if (WiFi.status() == WL_CONNECTED) 
@@ -47,6 +31,8 @@ void WiFi_Start_STA() {
    {
     WiFi.mode(WIFI_OFF);
     DBG("WLAN-Client-Connection failed\n");
+    delay(2000);
+    ESP.restart();
    }
   
 }
@@ -72,21 +58,13 @@ void WiFi_Start_AP() {
   DBG(getmyIP, 1);
 }
 //---------------------------------------------------------------------
-void UDPReceiveNtrip()
-{
-  if(udpNtrip.listen(portMyNtrip)) 
-    {
-     Serial.print("NTRIP UDP Listening on IP: ");
-     Serial.println(WiFi.localIP());
-     udpNtripRecv();
-    } 
-}
+
 //---------------------------------------------------------------------
 void Send_UDP()
 {
     //Send Packet
     //udp.listen(portMy);
-    udpRoof.writeTo(GPStoSend, sizeof(GPStoSend), ipDestination, portDestination );
+    udp.writeTo(GPStoSend, sizeof(GPStoSend), ipDestination, portDestination );
     //udp.listen(portAOG);
 }
 //---------------------------------------------------------------------
@@ -529,7 +507,7 @@ void make_HTML01() {
   strcat( HTML_String, "<table>");
   set_colgroup(150, 270, 150, 0, 0);
 
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 2; i++) {
     strcat( HTML_String, "<tr>");
     if (i == 0)  strcat( HTML_String, "<td><b>NTRIP Client</b></td>");
     else strcat( HTML_String, "<td> </td>");
@@ -553,29 +531,20 @@ void make_HTML01() {
   }
   strcat( HTML_String, "<tr> <td colspan=\"3\">&nbsp;</td> </tr>");
 
-  #if (!useBluetooth)
-    if (NtripSettings.send_UDP_AOG == 2) NtripSettings.send_UDP_AOG =0;
-  #endif
   for (int i = 0; i < 3; i++) {
     strcat( HTML_String, "<tr>");
     if (i == 0)  strcat( HTML_String, "<td><b>Transmission Mode</b></td>");
     else strcat( HTML_String, "<td> </td>");
-    strcat( HTML_String, "<td><input type = \"radio\" name=\"SENDNMEA_TYPE\" id=\"JZ"); 
+    strcat( HTML_String, "<td><input type = \"radio\" name=\"SENDNMEA_TYPE\" id=\"JZ");
     strcati( HTML_String, i);
     strcat( HTML_String, "\" value=\"");
     strcati( HTML_String, i);
     strcat( HTML_String, "\"");
     if (NtripSettings.send_UDP_AOG == i)strcat( HTML_String, " CHECKED");
-    #if (!useBluetooth)
-      if ( i == 2) strcat( HTML_String, " disabled"); //if BT is Disabled by code
-    #endif
     strcat( HTML_String, "><label for=\"JZ");
     strcati( HTML_String, i);
     strcat( HTML_String, "\">");
     strcat( HTML_String, sendNmea[i]);
-    #if (!useBluetooth)
-      if ( i == 2) strcat( HTML_String, " (disabled by code)"); //if BT is Disabled by code
-    #endif
     strcat( HTML_String, "</label></td>");
     
   }

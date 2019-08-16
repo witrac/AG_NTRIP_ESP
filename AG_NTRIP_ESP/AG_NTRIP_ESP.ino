@@ -1,7 +1,7 @@
 TaskHandle_t Core1;
 TaskHandle_t Core2;
 // ESP32 Ntrip Client by Coffeetrac
-// Release: V1.26
+// Release: V1.25
 // 01.01.2019 W.Eder
 // Enhanced by Matthias Hammer 12.01.2019
 //##########################################################################################################
@@ -9,18 +9,19 @@ TaskHandle_t Core2;
 //### Just Default values ##################################################################################
 struct Storage{
   
-  char ssid[24]        = "yourSSID";          // WiFi network Client name
-  char password[24]    = "YourPassword";      // WiFi network password
-  unsigned long timeoutRouter = 65;           // Time (seconds) to wait for WIFI access, after that own Access Point starts 
+  char ssid[24]        = "ssid";          // WiFi network Client name
+  char password[24]    = "password";      // WiFi network password
+
 
   // Ntrip Caster Data
+  
   char host[40]        = "195.200.70.200";    // Server IP
   int  port            = 2101;                // Server Port
   char mountpoint[40]  = "FPS_BY_RTCM3_3G";   // Mountpoint
   char ntripUser[40]   = "NTRIPUsername";     // Username
   char ntripPassword[40]= "NTRIPPassword";    // Password
 
-  byte sendGGAsentence = 0; // 0 = No Sentence will be sended
+  byte sendGGAsentence = 2; // 0 = No Sentence will be sended
                             // 1 = fixed Sentence from GGAsentence below will be sended
                             // 2 = GGA from GPS will be sended
   
@@ -28,15 +29,13 @@ struct Storage{
 
   char GGAsentence[100] = "$GPGGA,051353.171,4751.637,N,01224.003,E,1,12,1.0,0.0,M,0.0,M,,*6B"; //hc create via www.nmeagen.org
   
-  long baudOut = 38400;     // Baudrate of RTCM Port
+  long baudOut = 9600;     // Baudrate of RTCM Port
 
-  byte send_UDP_AOG  = 0;   // 0 = Transmission of NMEA Off
+  byte send_UDP_AOG  = 1;   // 0 = Transmission of NMEA Off
                             // 1 = Transmission of NMEA Sentences to AOG via Ethernet-UDP
-                            // 2 = Bluetooth attention: not possible if line useBluetooth = false
+                            // 2 = Bluetooth
 
-  byte enableNtrip   = 0;   // 0 = NTRIP disabled
-                            // 1 = ESP NTRIP Client enabled
-                            // 2 = AOG NTRIP Client enabled (Port=2233)
+  byte enableNtrip   = 1;   // 1 = NTRIP Client enabled
   
   byte AHRSbyte      = 0;   // 0 = No IMU, No Inclinometer
                             // 1 = BNO055 IMU installed
@@ -49,7 +48,6 @@ struct Storage{
 //##########################################################################################################
 
 boolean debugmode = false;
-#define useBluetooth  1  // 1= possibility to use bluetooth to transfer data to AOG later on, but needs lots of memory.
 
 // IO pins --------------------------------
 #define RX0      3
@@ -63,8 +61,6 @@ boolean debugmode = false;
 
 #define SDA     21  //I2C Pins
 #define SCL     22
-
-#define LED_PIN_WIFI   32   // WiFi Status LED
 
 //########## BNO055 adress 0x28 ADO = 0 set in BNO_ESP.h means ADO -> GND
 //########## MMA8451 adress 0x1D SAO = 0 set in MMA8452_AOG.h means SAO open (pullup!!)
@@ -90,34 +86,25 @@ const char* ssid_ap     = "NTRIP_Client_ESP_Net";
 const char* password_ap = "";
 
 //static IP
-IPAddress myip(192, 168, 1, 79);  // Roofcontrol module
-IPAddress gwip(192, 168, 1, 1);   // Gateway & Accesspoint IP
+IPAddress myip(192, 168, 0, 201);  // Roofcontrol module
+IPAddress gwip(192, 168, 0, 1);   // Gateway & Accesspoint IP
 IPAddress mask(255, 255, 255, 0);
 IPAddress myDNS(8, 8, 8, 8);      //optional
 
 unsigned int portMy = 5544;       //this is port of this module: Autosteer = 5577 IMU = 5566 GPS = 
 unsigned int portAOG = 8888;      // port to listen for AOG
-unsigned int portMyNtrip = 2233;
 
 //IP address to send UDP data to:
 IPAddress ipDestination(192, 168, 1, 255);
 unsigned int portDestination = 9999;  // Port of AOG that listens
 
 // Variables ------------------------------
-// WiFistatus LED 
-// blink times: searching WIFI: blinking 4x faster; connected: blinking as times set; data available: light on; no data for 2 seconds: blinking
-unsigned int LED_WIFI_time = 0;
-unsigned int LED_WIFI_pulse = 700;   //light on in ms 
-unsigned int LED_WIFI_pause = 700;   //light off in ms
-boolean LED_WIFI_ON = false;
-unsigned long Ntrip_data_time = 0;
-
 // program flow
 bool AP_running=0, EE_done = 0, restart=0;
 int value = 0; 
 unsigned long repeat_ser;   
 //int error = 0;
-unsigned long repeatGGA, lifesign, aogntriplife;
+unsigned long repeatGGA, lifesign;
 
 //loop time variables in microseconds
 const unsigned int LOOP_TIME = 100; //10hz 
@@ -157,11 +144,8 @@ MMA8452 accelerometer;
 WiFiServer server(80);
 WiFiClient ntripCl;
 WiFiClient client_page;
-AsyncUDP udpRoof;
-AsyncUDP udpNtrip;
-#if (useBluetooth)
+AsyncUDP udp;
 BluetoothSerial SerialBT;
-#endif
 
 
 // Setup procedure ------------------------
@@ -177,14 +161,12 @@ void setup() {
   Serial2.begin(115200,SERIAL_8N1,RX2,TX2); 
 
   Serial.begin(115200);
- #if (useBluetooth)
-     if(!SerialBT.begin("BT_GPS_ESP")){
+  if(!SerialBT.begin("BT_GPS_ESP")){
       DBG("\nAn error occurred initializing Bluetooth\n");
-     }
- #endif
-
- pinMode(LED_PIN_WIFI, OUTPUT);
-   
+  }
+  
+ 
+  
   //------------------------------------------------------------------------------------------------------------  
   //create a task that will be executed in the Core1code() function, with priority 1 and executed on core 0
   xTaskCreatePinnedToCore(Core1code, "Core1", 10000, NULL, 1, &Core1, 0);
