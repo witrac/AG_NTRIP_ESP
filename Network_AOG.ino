@@ -5,10 +5,11 @@ void WiFi_Start_STA() {
 
   WiFi.mode(WIFI_STA);   //  Workstation
   
-  if (!WiFi.config(myip, gwip, mask, myDNS)) 
-   {
-    DBG("STA Failed to configure\n");
-   }
+  if ( static_ip ) {
+    if (!WiFi.config(myip, gwip, mask, myDNS)) {
+      DBG("STA Failed to configure\n");
+    }
+  }
   
   WiFi.begin(NtripSettings.ssid, NtripSettings.password);
   timeout = millis() + 30000L;
