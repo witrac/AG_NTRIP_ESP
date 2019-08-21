@@ -36,10 +36,15 @@ struct Storage{
                             // 3 = BNO055 + MMA 8452 installed
 }; Storage NtripSettings;
 
+//WPA2-Enterprise
+bool wpa_enterprise = false;	       // Connect to wpa2-enterprise
+const char* peap_ssid = "peap_ssid"; // Wifi ssid
+#define PEAP_IDENTITY "identity"     // PEAP identity
+#define PEAP_PASSWORD "password"     // PEAP password
 
 //static IP
-bool static_ip = false;
-IPAddress myip(192, 168, 0, 201);                    // Roofcontrol module
-IPAddress gwip(192, 168, 0, 1);                      // Gateway & Accesspoint IP
-IPAddress mask(255, 255, 255, 0);                    // Mask
-IPAddress myDNS(8, 8, 8, 8);                         // DNS
+bool static_ip = false;		           // Enable static IP
+IPAddress myip(192, 168, 0, 201);    // Roofcontrol module
+IPAddress gwip(192, 168, 0, 1);      // Gateway & Accesspoint IP
+IPAddress mask(255, 255, 255, 0);    // Mask
+IPAddress myDNS(8, 8, 8, 8);         // DNS

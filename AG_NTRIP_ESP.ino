@@ -36,6 +36,7 @@ boolean debugmode = false;
 #include "MMA8452_AOG.h"
 #include "BluetoothSerial.h"
 #include "device_config.h"
+#include "esp_wpa2.h"
 
 // Declarations
 void DBG(String out, byte nl = 0);

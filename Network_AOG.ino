@@ -4,14 +4,32 @@ void WiFi_Start_STA() {
   unsigned long timeout;
 
   WiFi.mode(WIFI_STA);   //  Workstation
-  
+
+  const char* active_ssid = nullptr;
   if ( static_ip ) {
     if (!WiFi.config(myip, gwip, mask, myDNS)) {
       DBG("STA Failed to configure\n");
     }
   }
   
-  WiFi.begin(NtripSettings.ssid, NtripSettings.password);
+  if ( wpa_enterprise ) {
+    active_ssid = peap_ssid;
+    esp_wifi_sta_wpa2_ent_set_identity((uint8_t *)PEAP_IDENTITY, strlen(PEAP_IDENTITY));
+    esp_wifi_sta_wpa2_ent_set_username((uint8_t *)PEAP_IDENTITY, strlen(PEAP_IDENTITY));
+    esp_wifi_sta_wpa2_ent_set_password((uint8_t *)PEAP_PASSWORD, strlen(PEAP_PASSWORD));
+    esp_wpa2_config_t config = WPA2_CONFIG_INIT_DEFAULT();
+    esp_wifi_sta_wpa2_ent_enable(&config);
+    esp_wifi_sta_wpa2_ent_clear_ca_cert();
+    WiFi.begin( peap_ssid );
+  }
+  else {
+    active_ssid = NtripSettings.ssid;
+    WiFi.begin(NtripSettings.ssid, NtripSettings.password);
+  }
+  DBG("MAC: ");
+  DBG( WiFi.macAddress(), 1);
+  DBG("Connecting to: ");
+  DBG( active_ssid, 1);
   timeout = millis() + 30000L;
   while (WiFi.status() != WL_CONNECTED && millis() < timeout) {
     delay(50);
@@ -24,7 +42,7 @@ void WiFi_Start_STA() {
     server.begin();
     my_WiFi_Mode = WIFI_STA;
     DBG("WiFi Client successfully connected to : ");
-    DBG(NtripSettings.ssid, 1);
+    DBG( active_ssid, 1);
     DBG("Connected IP - Address : ");
     DBG( WiFi.localIP(), 1);
    } 
